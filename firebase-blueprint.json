@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and credit information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "pro"] },
+        "imageCredits": { "type": "integer" },
+        "videoCredits": { "type": "integer" }
+      },
+      "required": ["uid", "email", "plan", "imageCredits", "videoCredits"]
+    },
+    "HistoryItem": {
+      "title": "History Item",
+      "description": "Record of an AI generation in history",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "prompt": { "type": "string" },
+        "type": { "type": "string", "enum": ["image", "video"] },
+        "outputUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "prompt", "type", "outputUrl", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "history/{historyId}": {
+      "schema": "HistoryItem",
+      "description": "AI generation history"
+    }
+  }
+}

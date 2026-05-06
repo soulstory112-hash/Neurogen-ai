@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- User Profiles ---
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'email', 'plan', 'imageCredits', 'videoCredits'])
+          && data.keys().size() == 5
+          && data.uid == request.auth.uid
+          && data.email is string
+          && data.plan in ['free', 'pro']
+          && data.imageCredits is int
+          && data.videoCredits is int;
+      }
+
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId)
+        && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageCredits', 'videoCredits'])
+          && request.resource.data.imageCredits <= resource.data.imageCredits
+          && request.resource.data.videoCredits <= resource.data.videoCredits
+        );
+    }
+
+    // --- History ---
+    match /history/{historyId} {
+      function isValidHistory(data) {
+        return data.keys().hasAll(['userId', 'prompt', 'type', 'outputUrl', 'createdAt'])
+          && data.keys().size() == 5
+          && data.userId == request.auth.uid
+          && data.prompt is string && data.prompt.size() <= 1000
+          && data.type in ['image', 'video']
+          && data.outputUrl is string
+          && data.createdAt == request.time;
+      }
+
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidHistory(request.resource.data);
+    }
+  }
+}
